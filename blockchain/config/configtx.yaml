@@ -1,0 +1,150 @@
+Organizations:
+    - &OrdererOrg
+        Name: OrdererOrg
+        ID: OrdererMSP
+        MSPDir: /etc/hyperledger/crypto-config/ordererOrganizations/example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+        OrdererEndpoints:
+            - orderer.example.com:7050
+
+    - &FoodOrg
+        Name: FoodOrgMSP
+        ID: FoodOrgMSP
+        MSPDir: /etc/hyperledger/crypto-config/peerOrganizations/foodorg.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('FoodOrgMSP.admin', 'FoodOrgMSP.peer', 'FoodOrgMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('FoodOrgMSP.admin', 'FoodOrgMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('FoodOrgMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('FoodOrgMSP.peer')"
+
+    - &PharmaOrg
+        Name: PharmaOrgMSP
+        ID: PharmaOrgMSP
+        MSPDir: /etc/hyperledger/crypto-config/peerOrganizations/pharmaorg.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('PharmaOrgMSP.admin', 'PharmaOrgMSP.peer', 'PharmaOrgMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('PharmaOrgMSP.admin', 'PharmaOrgMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('PharmaOrgMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('PharmaOrgMSP.peer')"
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        V2_0: true
+    Orderer: &OrdererCapabilities
+        V2_0: true
+    Application: &ApplicationCapabilities
+        V2_5: true
+
+Application: &ApplicationDefaults
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+    OrdererType: etcdraft
+    Addresses:
+        - orderer.example.com:7050
+    EtcdRaft:
+        Consenters:
+        - Host: orderer.example.com
+          Port: 7050
+          ClientTLSCert: /etc/hyperledger/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+          ServerTLSCert: /etc/hyperledger/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+Profiles:
+    TwoOrgsOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *FoodOrg
+                    - *PharmaOrg
+    
+    FoodPharmaChannel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *FoodOrg
+                - *PharmaOrg
+            Capabilities: *ApplicationCapabilities
